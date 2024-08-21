@@ -186,6 +186,13 @@ def delete_planet(planet_id):
 ##############################################################################################################################################################################
 # Rutas para favoritos:
 
+@app.route('/favorites', methods=['GET'])
+def get_all_favorites():
+    favorites = Favorite.query.all()
+    return jsonify([favorite.serialize() for favorite in favorites]), 200
+
+
+
 @app.route('/favorite/planet/<int:planet_id>', methods=['POST'])
 def create_planet_favorite(planet_id):
     data = request.get_json()

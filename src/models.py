@@ -28,7 +28,9 @@ class Favorite(BaseModel):
     def serialize(self):
         return {
             "id": self.id,
+            ## Tengo que preguntar si en realidad quiero enviar esto, entiendo que sí para tener esa referencia, pero estoy haciendo la petición con un user_id (En este ejercicio sí para que se miren desde el Ringo al incializar el código):
             "user_id": self.user_id,
+            ##
             "planet_id": self.planet_id,
             "people_id": self.people_id
         }

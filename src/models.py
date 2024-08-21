@@ -19,29 +19,31 @@ class BaseModel(db.Model):
         return f"<{self.__class__.__name__} {self.to_json()}>"
     
 class Favorite(BaseModel):
-    __tablename__ = 'favorite'
+    __tablename__ = 'favorites'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    planet_id = db.Column(db.Integer, db.ForeignKey('Planets.id'))
-    people_id = db.Column(db.Integer, db.ForeignKey('People.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    planet_id = db.Column(db.Integer, db.ForeignKey('planets.id'))
+    people_id = db.Column(db.Integer, db.ForeignKey('people.id'))
+
+    user = db.relationship('User', back_populates='favorites')
+    planet = db.relationship('Planets', back_populates='favorites')
+    people = db.relationship('People', back_populates='favorites')
 
     def serialize(self):
         return {
             "id": self.id,
-            ## Tengo que preguntar si en realidad quiero enviar esto, entiendo que sí para tener esa referencia, pero estoy haciendo la petición con un user_id (En este ejercicio sí para que se miren desde el Ringo al incializar el código):
             "user_id": self.user_id,
-            ##
             "planet_id": self.planet_id,
             "people_id": self.people_id
         }
 
 class User(BaseModel):
-    __tablename__ = 'user'
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(80), unique=False, nullable=False)
-    is_active = db.Column(db.Boolean(), unique=False, nullable=False)
-    favorites = db.relationship('Favorite', backref='user', lazy=True)
+    password = db.Column(db.String(80), nullable=False)
+    is_active = db.Column(db.Boolean(), nullable=False)
+    favorites = db.relationship('Favorite', back_populates='user', lazy=True)
 
     def serialize(self):
         return {
@@ -51,37 +53,67 @@ class User(BaseModel):
         }
 
 class People(BaseModel):
-    __tablename__ = 'People'
+    __tablename__ = 'people'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), unique=True, nullable=False)
     url = db.Column(db.String(450), unique=True, nullable=False)
+    
+    # Relación uno a uno con Person
+    person_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+    person = db.relationship('Person', back_populates='people', uselist=False)
+
+    favorites = db.relationship('Favorite', back_populates='people')
 
     def serialize(self):
         return {
             "id": self.id,
             "name": self.name,
-            "url": self.url
+            "url": self.url,
+            "person_id": self.person_id
+        }
+
+class Planets(BaseModel):
+    __tablename__ = 'planets'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), unique=True, nullable=False)
+    url = db.Column(db.String(450), unique=True, nullable=False)
+    
+    # Relación uno a uno con Planet
+    planet_id = db.Column(db.Integer, db.ForeignKey('planet.id'))
+    planet = db.relationship('Planet', back_populates='planets', uselist=False)
+
+    favorites = db.relationship('Favorite', back_populates='planet')
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "url": self.url,
+            "planet_id": self.planet_id
         }
 
 class Person(BaseModel):
-    __tablename__='Person'
+    __tablename__ = 'person'
     id = db.Column(db.Integer, primary_key=True)
-    birth_year=db.Column(db.String(150), nullable=False)
-    eye_color=db.Column(db.String(150), nullable=False)
-    films=db.Column(db.ARRAY(db.String), nullable=False)
+    birth_year = db.Column(db.String(150), nullable=False)
+    eye_color = db.Column(db.String(150), nullable=False)
+    films = db.Column(db.ARRAY(db.String), nullable=False)
     gender = db.Column(db.String(150), nullable=False)
     hair_color = db.Column(db.String(150), nullable=False)
-    height=db.Column(db.String(150), nullable=False)
-    homeworld=db.Column(db.ARRAY(db.String), nullable=False)
-    mass=db.Column(db.String(150), nullable=False)
-    name=db.Column(db.String(150), nullable=False)
-    skin_color=db.Column(db.String(150), nullable=False)
-    created_at=db.Column(db.DateTime, default=datetime.now, nullable=False)
-    edited_at=db.Column(db.DateTime, default=datetime.now, nullable=False)
-    species=db.Column(db.ARRAY(db.String), nullable=False)
-    starships=db.Column(db.ARRAY(db.String), nullable=False)
-    url=db.Column(db.String(150), nullable=False)
-    vehicles=db.Column(db.ARRAY(db.String), nullable=False)
+    height = db.Column(db.String(150), nullable=False)
+    homeworld = db.Column(db.String(150), nullable=False)
+    mass = db.Column(db.String(150), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    skin_color = db.Column(db.String(150), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    edited_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    species = db.Column(db.ARRAY(db.String), nullable=False)
+    starships = db.Column(db.ARRAY(db.String), nullable=False)
+    url = db.Column(db.String(150), nullable=False)
+    vehicles = db.Column(db.ARRAY(db.String), nullable=False)
+    
+    # Relación uno a uno con People
+    people = db.relationship('People', back_populates='person', uselist=False)
 
     def serialize(self):
         return {
@@ -104,36 +136,26 @@ class Person(BaseModel):
             "vehicles": self.vehicles
         }
 
-class Planets(BaseModel):
-    __tablename__ = 'Planets'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), unique=True, nullable=False)
-    url = db.Column(db.String(450), unique=True, nullable=False)
-
-    def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "url": self.url
-        }
-
 class Planet(BaseModel):
-    __tablename__= 'Planet'
+    __tablename__= 'planet'
     id = db.Column(db.Integer, primary_key=True)
-    climate=db.Column(db.String(150), nullable=False)
-    created_at=db.Column(db.DateTime, default=datetime.now, nullable=False)
-    edited_at=db.Column(db.DateTime, default=datetime.now, nullable=False)
-    diameter=db.Column(db.String(150), nullable=False)
-    films=db.Column(db.ARRAY(db.String), nullable=False)
-    gravitiy=db.Column(db.String(150), nullable=False)
-    name=db.Column(db.String(150), nullable=False)
-    orbital_period=db.Column(db.String(150), nullable=False)
-    population=db.Column(db.String(150), nullable=False)
-    residents=db.Column(db.ARRAY(db.String), nullable=False)
-    rotation_period=db.Column(db.String(150), nullable=False)
-    surface_water=db.Column(db.String(150), nullable=False)
-    terrain=db.Column(db.String(150), nullable=False)
-    url=db.Column(db.String(150), nullable=False)
+    climate = db.Column(db.String(150), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    edited_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    diameter = db.Column(db.String(150), nullable=False)
+    films = db.Column(db.ARRAY(db.String), nullable=False)
+    gravity = db.Column(db.String(150), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    orbital_period = db.Column(db.String(150), nullable=False)
+    population = db.Column(db.String(150), nullable=False)
+    residents = db.Column(db.ARRAY(db.String), nullable=False)
+    rotation_period = db.Column(db.String(150), nullable=False)
+    surface_water = db.Column(db.String(150), nullable=False)
+    terrain = db.Column(db.String(150), nullable=False)
+    url = db.Column(db.String(150), nullable=False)
+    
+    # Relación uno a uno con Planets
+    planets = db.relationship('Planets', back_populates='planet', uselist=False)
 
     def serialize(self):
         return {
@@ -143,7 +165,7 @@ class Planet(BaseModel):
             "edited_at": self.edited_at.isoformat(),
             "diameter": self.diameter,
             "films": self.films,
-            "gravity": self.gravitiy,
+            "gravity": self.gravity,
             "name": self.name,
             "orbital_period": self.orbital_period,
             "population": self.population,
@@ -153,4 +175,3 @@ class Planet(BaseModel):
             "terrain": self.terrain,
             "url": self.url
         }
-

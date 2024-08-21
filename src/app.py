@@ -8,8 +8,8 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, People, Planets, Favorite
-#from models import Person
+from models import db, User, People, Planets, Favorite, Person, Planet
+
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -106,35 +106,73 @@ def get_all_people():
 
 @app.route('/people/<int:people_id>', methods=['GET'])
 def get_person(people_id):
-    person = People.query.get(people_id)
-    if not person:
+    people = People.query.get(people_id)
+    if not people:
         return jsonify({'error': 'Person not found'}), 404
+    
+    # Recuperar detalles completos desde Person
+    person = Person.query.get(people.person_id)
+    if not person:
+        return jsonify({'error': 'Detailed Person not found'}), 404
+    
     return jsonify(person.serialize()), 200
 
 @app.route('/people', methods=['POST'])
 def create_person():
     data = request.get_json()
-    person = People(**data)
+    
+    # Crear en Person (tabla detallada)
+    person = Person(**data)
     db.session.add(person)
     db.session.commit()
+
+    # Crear o actualizar en People (tabla resumida)
+    people_data = {
+        'name': person.name,
+        'url': person.url,
+        'person_id': person.id
+    }
+    people = People.query.filter_by(person_id=person.id).first()
+    if not people:
+        people = People(**people_data)
+    else:
+        for key, value in people_data.items():
+            setattr(people, key, value)
+    
+    db.session.add(people)
+    db.session.commit()
+    
     return jsonify(person.serialize()), 201
 
 @app.route('/people/<int:people_id>', methods=['PUT'])
 def update_person(people_id):
-    person = People.query.get(people_id)
+    person = Person.query.get(people_id)
     if not person:
         return jsonify({'error': 'Person not found'}), 404
+    
     data = request.get_json()
     for key, value in data.items():
         setattr(person, key, value)
     db.session.commit()
+
+    # Actualizar People (tabla resumida)
+    if person.people:
+        person.people.name = person.name
+        person.people.url = person.url
+        db.session.commit()
+    
     return jsonify(person.serialize()), 200
 
 @app.route('/people/<int:people_id>', methods=['DELETE'])
 def delete_person(people_id):
-    person = People.query.get(people_id)
+    person = Person.query.get(people_id)
     if not person:
         return jsonify({'error': 'Person not found'}), 404
+    
+    # Eliminar People asociado
+    if person.people:
+        db.session.delete(person.people)
+    
     db.session.delete(person)
     db.session.commit()
     return jsonify({'message': 'Person deleted'}), 200
@@ -150,39 +188,76 @@ def get_all_planets():
 
 @app.route('/planets/<int:planet_id>', methods=['GET'])
 def get_planet(planet_id):
-    planet = Planets.query.get(planet_id)
-    if not planet:
+    planets = Planets.query.get(planet_id)
+    if not planets:
         return jsonify({'error': 'Planet not found'}), 404
+    
+    # Recuperar detalles completos desde Planet
+    planet = Planet.query.get(planets.planet_id)
+    if not planet:
+        return jsonify({'error': 'Detailed Planet not found'}), 404
+    
     return jsonify(planet.serialize()), 200
 
 @app.route('/planets', methods=['POST'])
 def create_planet():
     data = request.get_json()
-    planet = Planets(**data)
+    
+    # Crear en Planet (tabla detallada)
+    planet = Planet(**data)
     db.session.add(planet)
     db.session.commit()
+
+    # Crear o actualizar en Planets (tabla resumida)
+    planets_data = {
+        'name': planet.name,
+        'url': planet.url,
+        'planet_id': planet.id
+    }
+    planets = Planets.query.filter_by(planet_id=planet.id).first()
+    if not planets:
+        planets = Planets(**planets_data)
+    else:
+        for key, value in planets_data.items():
+            setattr(planets, key, value)
+    
+    db.session.add(planets)
+    db.session.commit()
+    
     return jsonify(planet.serialize()), 201
 
 @app.route('/planets/<int:planet_id>', methods=['PUT'])
 def update_planet(planet_id):
-    planet = Planets.query.get(planet_id)
+    planet = Planet.query.get(planet_id)
     if not planet:
         return jsonify({'error': 'Planet not found'}), 404
+    
     data = request.get_json()
     for key, value in data.items():
         setattr(planet, key, value)
     db.session.commit()
+
+    # Actualizar Planets (tabla resumida)
+    if planet.planets:
+        planet.planets.name = planet.name
+        planet.planets.url = planet.url
+        db.session.commit()
+    
     return jsonify(planet.serialize()), 200
 
 @app.route('/planets/<int:planet_id>', methods=['DELETE'])
 def delete_planet(planet_id):
-    planet = Planets.query.get(planet_id)
+    planet = Planet.query.get(planet_id)
     if not planet:
         return jsonify({'error': 'Planet not found'}), 404
+    
+    # Eliminar Planets asociado
+    if planet.planets:
+        db.session.delete(planet.planets)
+    
     db.session.delete(planet)
     db.session.commit()
     return jsonify({'message': 'Planet deleted'}), 200
-
 ##############################################################################################################################################################################
 # Rutas para favoritos:
 
@@ -258,15 +333,6 @@ def delete_people_favorite(people_id):
     db.session.delete(favorite)
     db.session.commit()
     return jsonify({'message': 'Favorite deleted'}), 200
-
-##############################################################################################################################################################################
-# Rutas aparte pedidas por el ejercicio:
-
-
-
-
-
-    
 
 
 ##############################################################################################################################################################################
